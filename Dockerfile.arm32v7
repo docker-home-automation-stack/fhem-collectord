@@ -1,0 +1,30 @@
+FROM arm32v7/debian:stretch-slim
+COPY ./src/qemu-arm-static /usr/bin/qemu-arm-static
+LABEL maintainer="Julian Pawlowski <julian.pawlowski@gmail.com>"
+
+ENV TERM xterm
+
+# Install base environment
+RUN DEBIAN_FRONTEND=noninteractive apt-get update \
+  && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends apt-utils \
+  && DEBIAN_FRONTEND=noninteractive apt-get install -qqy --no-install-recommends \
+  apt-transport-https \
+  bash \
+  netcat \
+  perl \
+  && apt-get autoremove && apt-get clean \
+  && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+ADD https://svn.fhem.de/fhem/trunk/fhem/contrib/PRESENCE/collectord /collectord
+COPY src/collectord.conf /collectord.conf
+COPY src/entry.sh /entry.sh
+RUN chmod 755 /*.sh /collectord
+
+VOLUME [ "/data" ]
+
+EXPOSE 22
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 CMD nc -z localhost 5222
+
+ENTRYPOINT [ "/entry.sh" ]
+CMD [ "start" ]
